@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
+// Thêm import auth và hàm service
+import { auth } from '../../firebase/config';
+import { createResearchPaper } from '../../firebase/paperService';
 
 const existingPapers = [
   { doi: '10.1234/ml.healthcare.2024', link: 'https://example.com/ml-healthcare', title: 'Machine Learning Applications in Healthcare' },
@@ -19,7 +22,9 @@ export function RequestPaperPage() {
     keywords: '',
     year: '',
   });
+  
   const [duplicateWarning, setDuplicateWarning] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Thêm trạng thái loading
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -44,9 +49,10 @@ export function RequestPaperPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Kiểm tra cảnh báo trùng lặp
     if (duplicateWarning) {
       const confirmed = window.confirm(
         'This paper may already exist in the system. Do you still want to submit the request?'
@@ -54,8 +60,34 @@ export function RequestPaperPage() {
       if (!confirmed) return;
     }
 
-    alert('Paper request submitted successfully!');
-    navigate('/my-requests');
+    // 2. Kiểm tra đăng nhập
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      alert("Bạn cần đăng nhập để thực hiện tính năng này!");
+      return;
+    }
+
+    // 3. Chuẩn bị dữ liệu gửi đi (Map lại key cho khớp với service nếu cần)
+    const paperData = {
+      title: formData.title,
+      doi: formData.doi,
+      publicationYear: formData.year,
+      paperLink: formData.link,
+      abstract: formData.abstract,
+      keywords: formData.keywords,
+    };
+
+    // 4. Bắt đầu gửi dữ liệu
+    setIsSubmitting(true);
+    const result = await createResearchPaper(paperData, currentUser.uid);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      alert('Gửi yêu cầu bài báo thành công! Chờ Admin duyệt.');
+      navigate('/my-requests'); // Chuyển hướng người dùng sau khi thành công
+    } else {
+      alert(`Đã xảy ra lỗi: ${result.error}`);
+    }
   };
 
   return (
@@ -166,13 +198,17 @@ export function RequestPaperPage() {
               <div className="flex gap-4 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                  disabled={isSubmitting} // Khóa nút khi đang gửi
+                  className={`flex-1 text-primary-foreground py-3 rounded-lg transition-colors ${
+                    isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-600'
+                  }`}
                 >
-                  Submit Request
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/dashboard')}
+                  disabled={isSubmitting}
                   className="flex-1 bg-muted text-muted-foreground py-3 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cancel
