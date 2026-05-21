@@ -2,18 +2,64 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock } from 'lucide-react';
 import logo from '../../imports/ChatGPT_Image_10_47_26_20_thg_5__2026-removebg-preview.png';
+import { getCurrentUser, loginUser } from '../../firebase/authService';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.includes('admin')) {
-      navigate('/admin');
-    } else {
-      navigate('/dashboard');
+    setError(null);
+
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setError('Vui lòng nhập email.');
+      return;
+    }
+    if (!password) {
+      setError('Vui lòng nhập mật khẩu.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const user = await loginUser(normalizedEmail, password);
+
+      // Determine role from profile (Firestore). Fallback to email heuristic if profile not readable.
+      let role: string | null = null;
+      try {
+        const profile = await getCurrentUser(user.uid);
+        role = (profile as { role?: string } | null)?.role ?? null;
+      } catch (profileErr) {
+        console.error('Fetch profile failed:', profileErr);
+      }
+
+      if (role === 'admin' || normalizedEmail.toLowerCase().includes('admin')) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      console.error('Login failed:', err);
+
+      if (code === 'auth/invalid-email') {
+        setError('Email không hợp lệ.');
+      } else if (code === 'auth/user-not-found') {
+        setError('Tài khoản không tồn tại.');
+      } else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('Sai email hoặc mật khẩu.');
+      } else if (code === 'auth/network-request-failed') {
+        setError('Lỗi mạng khi đăng nhập. Hãy thử lại.');
+      } else {
+        setError(`Đăng nhập thất bại (${code ?? 'unknown'}).`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -41,6 +87,7 @@ export function LoginPage() {
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                   placeholder="student@university.edu"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -56,15 +103,19 @@ export function LoginPage() {
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                   placeholder="Enter your password"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>
 
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors"
+              className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-60"
+              disabled={isSubmitting}
             >
-              Login
+              {isSubmitting ? 'Logging in…' : 'Login'}
             </button>
           </form>
 
