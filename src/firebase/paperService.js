@@ -1,15 +1,10 @@
-// src/firebase/paperService.js
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./config";
 
-// ==========================================
-// 1. DÀNH CHO USER (Từ Bước 1)
-// ==========================================
-
-// Hàm thêm bài báo mới
 export const createResearchPaper = async (paperData, userId) => {
   try {
-    const docRef = await addDoc(collection(db, "research_papers"), {
+    // SỬA LỖI 1: Đổi "research_papers" thành "papers" cho khớp với Rule
+    const docRef = await addDoc(collection(db, "papers"), {
       title: paperData.title,
       doi: paperData.doi || "",
       publicationYear: paperData.publicationYear || "",
@@ -19,16 +14,17 @@ export const createResearchPaper = async (paperData, userId) => {
         ? paperData.keywords.split(",").map(kw => kw.trim()) 
         : [],
       userId: userId,               
-      status: "pending",            
+      // SỬA LỖI 2: Đổi "pending" thành "Chưa tải" cho khớp với Rule
+      status: "Chưa tải",            
       createdAt: serverTimestamp()  
     });
+    
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Lỗi khi gửi bài báo: ", error);
     return { success: false, error: error.message };
   }
 };
-
 // ==========================================
 // 2. DÀNH CHO ADMIN (Từ Bước 3)
 // ==========================================
