@@ -10,6 +10,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { PaperManagementPage } from './pages/PaperManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PaperDetailPage } from './pages/PaperDetailPage';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -18,15 +19,24 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/my-requests" element={<MyRequestsPage />} />
-        <Route path="/rankings" element={<UserRankingPage />} />
-        <Route path="/profile" element={<UserProfilePage />} />
-        <Route path="/request-paper" element={<RequestPaperPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/papers" element={<PaperManagementPage />} />
-        <Route path="/admin/users" element={<UserManagementPage />} />
-        <Route path="/paper/:id" element={<PaperDetailPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute element={<UserDashboard />} />} />
+        <Route path="/my-requests" element={<ProtectedRoute element={<MyRequestsPage />} />} />
+        <Route path="/rankings" element={<ProtectedRoute element={<UserRankingPage />} />} />
+        <Route path="/profile" element={<ProtectedRoute element={<UserProfilePage />} />} />
+        <Route path="/request-paper" element={<ProtectedRoute element={<RequestPaperPage />} />} />
+        <Route
+          path="/admin"
+          element={<ProtectedRoute element={<AdminDashboard />} requiredRole="admin" />}
+        />
+        <Route
+          path="/admin/papers"
+          element={<ProtectedRoute element={<PaperManagementPage />} requiredRole="admin" />}
+        />
+        <Route
+          path="/admin/users"
+          element={<ProtectedRoute element={<UserManagementPage />} requiredRole="admin" />}
+        />
+        <Route path="/paper/:id" element={<ProtectedRoute element={<PaperDetailPage />} />} />
       </Routes>
     </Router>
   );
